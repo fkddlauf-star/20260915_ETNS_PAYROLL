@@ -202,6 +202,9 @@ def _create_review_item(
     detail=None,
     names=None,
 ):
+    # detail은 규칙 라벨 문구가 바뀌면 같이 바뀌는 설명 텍스트일 뿐이라, 동일 발견 여부를
+    # 판단하는 중복 체크 키에서는 제외한다 (텍스트만 다르고 실질은 같은 항목이 재검증마다
+    # 계속 새로 생기는 걸 방지).
     dup = query(
         """
         SELECT id FROM pr_review_items
@@ -209,7 +212,6 @@ def _create_review_item(
           AND source_file_id IS NOT DISTINCT FROM %s
           AND compare_file_id IS NOT DISTINCT FROM %s
           AND period_year IS NOT DISTINCT FROM %s AND period_month IS NOT DISTINCT FROM %s
-          AND detail IS NOT DISTINCT FROM %s
         """,
         (
             review_type,
@@ -219,7 +221,6 @@ def _create_review_item(
             compare_file_id,
             period_year,
             period_month,
-            detail,
         ),
         fetch="one",
     )
@@ -255,138 +256,154 @@ def _create_review_item(
     return True
 
 
+EXCLUDE_EXEC = {"-"}
+
+
+def _resolve_file(template_key):
+    """template_key가 가리키는 파일을 찾는다. 데이터유형 필터는 룰의 data_type이 아니라
+    그 템플릿 자신의 고유 data_type을 쓴다 (예: HR마스터는 '급여'로 업로드되지만
+    '복리후생' 규칙의 기준 파일로도 쓰이므로, 룰의 data_type을 그대로 쓰면 못 찾는다)."""
+    template = TEMPLATES.get(template_key)
+    if not template:
+        return None
+    return _latest_file(template["file_match"], template.get("data_type"))
+
+
+def _run_missing_rule(rule, names):
+    base = _resolve_file(rule["base_template_key"])
+    compare = _resolve_file(rule["compare_template_key"])
+    if not base or not compare:
+        return 0
+
+    base_records = _records_for_file(base["id"])
+    compare_records = _records_for_file(compare["id"])
+    if rule["target_period_year"] is not None:
+        compare_records = [
+            r
+            for r in compare_records
+            if r.get("period_year") == rule["target_period_year"]
+            and r.get("period_month") == rule["target_period_month"]
+        ]
+
+    period_year = rule["target_period_year"] or compare.get("period_year") or base.get("period_year")
+    period_month = rule["target_period_month"] or compare.get("period_month") or base.get("period_month")
+
+    created_count = 0
+    for item in detect_missing(base_records, compare_records, exclude_keys=EXCLUDE_EXEC):
+        from_base = item["missing_from"] == "compare"  # base엔 있는데 compare엔 없음
+        created = _create_review_item(
+            "누락",
+            rule["data_type"],
+            item["employee_id"],
+            base["id"] if from_base else compare["id"],
+            compare_file_id=compare["id"] if from_base else base["id"],
+            period_year=period_year,
+            period_month=period_month,
+            detail=f"{rule['label']} — {'비교 파일' if from_base else '기준 파일'}에서 누락",
+            names=names,
+        )
+        if created:
+            created_count += 1
+    return created_count
+
+
+def _run_duplicate_rule(rule, names):
+    base = _resolve_file(rule["base_template_key"])
+    if not base:
+        return 0
+
+    key_columns = [c.strip() for c in (rule["key_columns"] or "").split(",") if c.strip()]
+    if not key_columns:
+        key_columns = ["employee_id"]
+
+    records = _records_for_file(base["id"])
+    created_count = 0
+    for dup in detect_duplicates(records, key_columns):
+        period_year = dup["key"].get("period_year") or base.get("period_year")
+        period_month = dup["key"].get("period_month") or base.get("period_month")
+        created = _create_review_item(
+            "중복",
+            rule["data_type"],
+            dup["key"].get("employee_id"),
+            base["id"],
+            period_year=period_year,
+            period_month=period_month,
+            detail=f"{rule['label']} — 동일 키 {dup['count']}건 중복",
+            names=names,
+        )
+        if created:
+            created_count += 1
+    return created_count
+
+
+def _run_mismatch_rule(rule, names):
+    base = _resolve_file(rule["base_template_key"])
+    if not base:
+        return 0
+    tolerance = float(rule["amount_tolerance"] or 0)
+    field_base = rule["amount_field_base"]
+    field_compare = rule["amount_field_compare"]
+    if not field_base or not field_compare:
+        return 0
+
+    records = _records_for_file(base["id"])
+    created_count = 0
+
+    if rule["compare_template_key"]:
+        # 다른 파일과 사번 기준으로 매칭해서 비교 (현재 기본 규칙에는 없지만 확장 대비)
+        compare = _resolve_file(rule["compare_template_key"])
+        if not compare:
+            return 0
+        compare_records = _records_for_file(compare["id"])
+        compare_by_id = {r["employee_id"]: r for r in compare_records if r.get("employee_id")}
+        for r in records:
+            other = compare_by_id.get(r.get("employee_id"))
+            if not other:
+                continue
+            base_val, cmp_val = r.get(field_base), other.get(field_compare)
+            if base_val is None or cmp_val is None:
+                continue
+            diff = base_val - cmp_val
+            if abs(diff) > tolerance:
+                created = _create_review_item(
+                    "금액불일치", rule["data_type"], r.get("employee_id"), base["id"],
+                    compare_file_id=compare["id"], expected_value=cmp_val, actual_value=base_val,
+                    diff_amount=diff, detail=rule["label"], names=names,
+                )
+                if created:
+                    created_count += 1
+    else:
+        # 같은 레코드(같은 파일) 안의 두 컬럼끼리 비교
+        for r in records:
+            base_val, cmp_val = r.get(field_base), r.get(field_compare)
+            if base_val is None or cmp_val is None:
+                continue
+            diff = base_val - cmp_val
+            if diff > tolerance:  # 실제값이 기준값을 초과하는 경우만 (예: 한도 초과)
+                created = _create_review_item(
+                    "금액불일치", rule["data_type"], r.get("employee_id"), base["id"],
+                    period_year=r.get("period_year") or base.get("period_year"),
+                    period_month=r.get("period_month") or base.get("period_month"),
+                    expected_value=cmp_val, actual_value=base_val, diff_amount=diff,
+                    detail=rule["label"], names=names,
+                )
+                if created:
+                    created_count += 1
+    return created_count
+
+
 def run_all_validations():
-    """등록된 실제 파일 조합에 대해 누락/중복/금액불일치를 실행하고 review_items를 채운다."""
+    """활성화된 pr_review_rules를 순회하며 검증을 실행하고 review_items를 채운다."""
     names = _name_lookup()
     counts = {"missing": 0, "duplicate": 0, "mismatch": 0}
 
-    hr = _latest_file("직원_근태_인사")
-    salary_detail = _latest_file("임직원_급여_상세")
-    monthly_payout = _latest_file("월별_인건비_이력")
-    annual_salary = _latest_file("임직원_연봉")
-    benefits = _latest_file("복리후생")
-
-    EXCLUDE_EXEC = {"-"}
-
-    # --- 급여 Pair 1: HR 마스터 vs 급여상세 (누락) ---
-    if hr and salary_detail:
-        hr_records = _records_for_file(hr["id"])
-        salary_records = _records_for_file(salary_detail["id"])
-        for item in detect_missing(hr_records, salary_records, exclude_keys=EXCLUDE_EXEC):
-            created = _create_review_item(
-                "누락",
-                "급여",
-                item["employee_id"],
-                hr["id"] if item["missing_from"] == "compare" else salary_detail["id"],
-                compare_file_id=salary_detail["id"] if item["missing_from"] == "compare" else hr["id"],
-                detail=f"{'급여상세' if item['missing_from']=='compare' else 'HR마스터'}에서 누락",
-                names=names,
-            )
-            if created:
-                counts["missing"] += 1
-
-    # --- 급여 Pair 1b: 급여상세 vs 월별지급내역 (특정 월 기준 누락) ---
-    if salary_detail and monthly_payout:
-        salary_records = _records_for_file(salary_detail["id"])
-        monthly_records = _records_for_file(monthly_payout["id"])
-        target_month_records = [
-            r for r in monthly_records if r.get("period_year") == 2025 and r.get("period_month") == 12
-        ]
-        for item in detect_missing(salary_records, target_month_records, exclude_keys=EXCLUDE_EXEC):
-            created = _create_review_item(
-                "누락",
-                "급여",
-                item["employee_id"],
-                salary_detail["id"] if item["missing_from"] == "compare" else monthly_payout["id"],
-                compare_file_id=monthly_payout["id"] if item["missing_from"] == "compare" else salary_detail["id"],
-                period_year=2025,
-                period_month=12,
-                detail=f"{'월별지급내역(12월)' if item['missing_from']=='compare' else '급여상세'}에서 누락",
-                names=names,
-            )
-            if created:
-                counts["missing"] += 1
-
-    # --- 급여 중복: 월별지급내역 내 (사번+연도+월) 중복 ---
-    if monthly_payout:
-        monthly_records = _records_for_file(monthly_payout["id"])
-        for dup in detect_duplicates(monthly_records, ["employee_id", "period_year", "period_month"]):
-            emp_id = dup["key"]["employee_id"]
-            created = _create_review_item(
-                "중복",
-                "급여",
-                emp_id,
-                monthly_payout["id"],
-                period_year=dup["key"]["period_year"],
-                period_month=dup["key"]["period_month"],
-                detail=f"동일 사번·기간 {dup['count']}건 중복",
-                names=names,
-            )
-            if created:
-                counts["duplicate"] += 1
-
-    # 참고: 급여상세(연봉(계약/원)) vs 연봉상세(기본연봉(만원))는 실제 데이터 확인 결과
-    # 임원 2명을 제외한 일반 직원은 두 금액이 애초에 다른 개념(계약연봉 vs 기본연봉)이라
-    # 거의 전원이 불일치로 잡혀 검증 규칙으로 부적합함이 확인되어 이번 단계에서는 제외했다.
-    # (아래 복리후생 한도초과 검증으로 금액불일치 시나리오를 시연한다)
-    _ = (salary_detail, annual_salary)
-
-    # --- 복리후생: 누락 / 중복 / 한도초과(금액불일치) ---
-    if hr and benefits:
-        hr_records = _records_for_file(hr["id"])
-        benefit_records = _records_for_file(benefits["id"])
-
-        b_year, b_month = benefits["period_year"], benefits["period_month"]
-
-        for item in detect_missing(hr_records, benefit_records, exclude_keys=EXCLUDE_EXEC):
-            if item["missing_from"] == "compare":
-                created = _create_review_item(
-                    "누락",
-                    "복리후생",
-                    item["employee_id"],
-                    hr["id"],
-                    compare_file_id=benefits["id"],
-                    period_year=b_year,
-                    period_month=b_month,
-                    detail="복리후생 지급내역에서 누락",
-                    names=names,
-                )
-                if created:
-                    counts["missing"] += 1
-
-        for dup in detect_duplicates(benefit_records, ["employee_id"]):
-            emp_id = dup["key"]["employee_id"]
-            created = _create_review_item(
-                "중복",
-                "복리후생",
-                emp_id,
-                benefits["id"],
-                period_year=b_year,
-                period_month=b_month,
-                detail=f"동일 사번 복리후생 지급 {dup['count']}건 중복",
-                names=names,
-            )
-            if created:
-                counts["duplicate"] += 1
-
-        for r in benefit_records:
-            amt = r.get("benefit_amount")
-            limit = r.get("benefit_limit")
-            if amt is not None and limit is not None and amt > limit:
-                created = _create_review_item(
-                    "금액불일치",
-                    "복리후생",
-                    r.get("employee_id"),
-                    benefits["id"],
-                    period_year=b_year,
-                    period_month=b_month,
-                    expected_value=limit,
-                    actual_value=amt,
-                    diff_amount=amt - limit,
-                    detail="직급별 한도 초과 지급",
-                    names=names,
-                )
-                if created:
-                    counts["mismatch"] += 1
+    rules = query("SELECT * FROM pr_review_rules WHERE is_active = TRUE ORDER BY id")
+    for rule in rules:
+        if rule["rule_type"] == "누락":
+            counts["missing"] += _run_missing_rule(rule, names)
+        elif rule["rule_type"] == "중복":
+            counts["duplicate"] += _run_duplicate_rule(rule, names)
+        elif rule["rule_type"] == "금액불일치":
+            counts["mismatch"] += _run_mismatch_rule(rule, names)
 
     return counts

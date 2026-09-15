@@ -76,6 +76,39 @@ a:hover { text-decoration: underline; }
 }
 .btn-primary:hover { background: var(--accent-dark); text-decoration: none; color: #fff; }
 
+.btn-outline {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+}
+.btn-outline:hover { background: var(--surface-soft); border-color: var(--accent); color: var(--accent-dark); }
+
+.btn-danger-outline {
+  background: var(--surface);
+  border: 1px solid #e0b8ad;
+  color: #b3261e;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+}
+.btn-danger-outline:hover { background: #fdecea; }
+
+.inline-form { display: flex; flex-direction: column; gap: 6px; }
+.inline-form input {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
 .page { padding: 28px 24px 60px; }
 
 .container {
@@ -175,6 +208,7 @@ h1 { margin-top: 0; font-size: 22px; }
 .tile-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .tile.new .tile-value { color: #b3261e; }
 .tile.progress .tile-value { color: #b3720a; }
+.tile.pending .tile-value { color: #2f5e8f; }
 .tile.done .tile-value { color: #1a7f4b; }
 .tile.exception .tile-value { color: var(--text-muted); }
 .tile.rate .tile-value { color: var(--accent); }
@@ -247,6 +281,27 @@ h1 { margin-top: 0; font-size: 22px; }
 .status-검토중 { background: #fff3d6; color: #8a5a00; }
 .status-해결완료 { background: #e3f5ea; color: #1a7f4b; }
 .status-정상예외 { background: #ece8e3; color: var(--text-muted); }
+.status-승인대기 { background: #e3edfb; color: #2f5e8f; }
+
+.approval-box {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+.approval-box form { display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; flex-wrap: wrap; }
+.approval-box textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  flex: 1;
+  min-width: 200px;
+}
+.close-request-buttons { display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
 
 .type-badge.type-누락 { background: #eaf1fb; color: #2f5e8f; }
 .type-badge.type-중복 { background: #f1eafb; color: #6a3fa0; }

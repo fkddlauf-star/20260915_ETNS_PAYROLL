@@ -22,12 +22,34 @@
   </table>
 
   <h2 class="section-title">검토 처리</h2>
+
+  {% if item.status == '승인대기' %}
+  <div class="approval-box">
+    {% if session.get('role') == 'admin' %}
+    <p><strong>{{ item.assignee_name or '담당자' }}</strong>님이 <strong>{{ item.requested_status }}</strong>로 종료 요청했습니다. 승인하시겠습니까?</p>
+    <form action="{{ url_for('reviews.approve', item_id=item.id) }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-primary">승인 ({{ item.requested_status }}로 확정)</button>
+    </form>
+    <form action="{{ url_for('reviews.reject', item_id=item.id) }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <textarea name="reason" placeholder="반려 사유 (선택)"></textarea>
+      <button type="submit" class="btn-danger-outline">반려 (검토중으로 되돌리기)</button>
+    </form>
+    {% else %}
+    <p><strong>{{ item.requested_status }}</strong>로 종료 요청하셨습니다. 관리자 승인 대기 중입니다.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <form class="review-form" action="{{ url_for('reviews.update', item_id=item.id) }}" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>검토 상태
       <select name="status">
         {% for s in statuses %}
-        <option value="{{ s }}" {{ 'selected' if item.status == s }}>{{ s }}</option>
+          {% if session.get('role') == 'admin' or s in ('신규', '검토중') %}
+          <option value="{{ s }}" {{ 'selected' if item.status == s }}>{{ s }}</option>
+          {% endif %}
         {% endfor %}
       </select>
     </label>
@@ -48,6 +70,21 @@
     </label>
     <button type="submit" class="btn-primary">저장</button>
   </form>
+
+  {% if item.status in ('신규', '검토중') and session.get('role') != 'admin' %}
+  <div class="close-request-buttons">
+    <form action="{{ url_for('reviews.request_close', item_id=item.id) }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="requested_status" value="해결완료">
+      <button type="submit" class="btn-outline">해결완료로 종료 요청</button>
+    </form>
+    <form action="{{ url_for('reviews.request_close', item_id=item.id) }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="requested_status" value="정상예외">
+      <button type="submit" class="btn-outline">정상예외로 종료 요청</button>
+    </form>
+  </div>
+  {% endif %}
 
   <h2 class="section-title">변경 이력</h2>
   <table class="data-table">

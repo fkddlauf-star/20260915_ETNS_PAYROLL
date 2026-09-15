@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}검증 규칙{% endblock %}
+{% block content %}
+<div class="container wide">
+  <h1>검증 규칙</h1>
+  <p class="subtitle">"지금 재검증 실행" 시 활성화된 규칙만 적용됩니다. 매칭키·허용오차·기준월을 조정할 수 있습니다.</p>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>유형</th><th>데이터유형</th><th>이름</th><th>기준 파일</th><th>비교 파일</th>
+        <th>매칭키</th><th>허용오차</th><th>기준월</th><th>상태</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rules %}
+      <tr>
+        <td><span class="type-badge type-{{ r.rule_type }}">{{ r.rule_type }}</span></td>
+        <td>{{ r.data_type }}</td>
+        <td>{{ r.label }}</td>
+        <td>{{ templates.get(r.base_template_key, {}).get('label', r.base_template_key or '-') }}</td>
+        <td>{{ templates.get(r.compare_template_key, {}).get('label', '-') if r.compare_template_key else '(자기 파일 내부)' }}</td>
+        <td>
+          <form class="inline-form" action="{{ url_for('rules.update', rule_id=r.id) }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if r.rule_type == '중복' %}
+            <input type="text" name="key_columns" value="{{ r.key_columns }}" placeholder="employee_id,period_year">
+            {% else %}
+            <input type="hidden" name="key_columns" value="{{ r.key_columns }}">
+            <span class="subtitle">-</span>
+            {% endif %}
+        </td>
+        <td>
+            {% if r.rule_type == '금액불일치' %}
+            <input type="number" name="amount_tolerance" value="{{ r.amount_tolerance|int }}" step="1000" style="width:100px">
+            {% else %}
+            <input type="hidden" name="amount_tolerance" value="{{ r.amount_tolerance|int }}">
+            <span class="subtitle">-</span>
+            {% endif %}
+        </td>
+        <td>
+            {% if r.compare_template_key %}
+            <div class="form-row" style="gap:4px">
+              <input type="number" name="target_period_year" value="{{ r.target_period_year or '' }}" placeholder="연도" style="width:80px">
+              <input type="number" name="target_period_month" value="{{ r.target_period_month or '' }}" placeholder="월" min="1" max="12" style="width:60px">
+            </div>
+            {% else %}
+            <span class="subtitle">전체</span>
+            {% endif %}
+            <button type="submit" class="btn-outline" style="margin-top:6px">저장</button>
+          </form>
+        </td>
+        <td>
+          <span class="status-badge {{ 'status-해결완료' if r.is_active else 'status-정상예외' }}">
+            {{ '활성' if r.is_active else '비활성' }}
+          </span>
+        </td>
+        <td>
+          <form action="{{ url_for('rules.toggle', rule_id=r.id) }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-outline">{{ '비활성화' if r.is_active else '활성화' }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

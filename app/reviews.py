@@ -2,12 +2,21 @@ import io
 
 from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 
-from .auth import current_user, login_required
+from .auth import admin_required, current_user, login_required
 from .db import execute, query
 
 bp = Blueprint("reviews", __name__, url_prefix="/reviews")
 
-STATUS_CHOICES = ["신규", "검토중", "해결완료", "정상예외"]
+STATUS_CHOICES = ["신규", "검토중", "승인대기", "해결완료", "정상예외"]
+CLOSING_STATUSES = ("해결완료", "정상예외")
+
+SORT_OPTIONS = {
+    "created_at": ("created_at", "DESC"),
+    "diff_amount": ("diff_amount", "DESC"),
+    "employee_id": ("employee_id", "ASC"),
+    "review_type": ("review_type", "ASC"),
+    "period": ("period_year, period_month", "ASC"),
+}
 
 
 def _build_filters(args, user):
@@ -50,7 +59,7 @@ def index():
     user = current_user()
     where, params = _build_filters(request.args, user)
     sort = request.args.get("sort", "created_at")
-    sort_col = {"created_at": "created_at", "diff_amount": "diff_amount"}.get(sort, "created_at")
+    sort_col, sort_dir = SORT_OPTIONS.get(sort, SORT_OPTIONS["created_at"])
 
     items = query(
         f"""
@@ -59,7 +68,7 @@ def index():
         LEFT JOIN pr_users u ON u.id = ri.assignee_id
         LEFT JOIN pr_source_files sf ON sf.id = ri.source_file_id
         WHERE {where}
-        ORDER BY {sort_col} DESC NULLS LAST
+        ORDER BY {sort_col} {sort_dir} NULLS LAST
         LIMIT 300
         """,
         tuple(params),
@@ -126,6 +135,11 @@ def update(item_id):
     new_comment = request.form.get("comment", "")
     new_assignee = request.form.get("assignee_id") or None
 
+    if user["role"] != "admin" and new_status in CLOSING_STATUSES:
+        # 조직원은 이 경로로 직접 종료 상태를 지정할 수 없음 — "종료 요청" 버튼을 통해서만 가능
+        flash("해결완료/정상예외는 '종료 요청' 버튼으로 처리해주세요 (관리자 승인 필요).")
+        new_status = item["status"]
+
     if new_status and new_status != item["status"]:
         execute(
             """
@@ -160,6 +174,88 @@ def update(item_id):
         (new_status or item["status"], new_comment, new_assignee, item_id),
     )
     flash("검토 항목이 저장되었습니다.")
+    return redirect(url_for("reviews.detail", item_id=item_id))
+
+
+@bp.route("/<int:item_id>/request-close", methods=["POST"])
+@login_required
+def request_close(item_id):
+    user = current_user()
+    item = query("SELECT * FROM pr_review_items WHERE id = %s", (item_id,), fetch="one")
+    if not item:
+        flash("검토 항목을 찾을 수 없습니다.")
+        return redirect(url_for("reviews.index"))
+    if user["role"] != "admin" and item["assignee_id"] != user["id"]:
+        flash("배정되지 않은 검토 항목입니다.")
+        return redirect(url_for("reviews.index"))
+
+    requested = request.form.get("requested_status")
+    if requested not in CLOSING_STATUSES:
+        flash("잘못된 요청입니다.")
+        return redirect(url_for("reviews.detail", item_id=item_id))
+
+    execute(
+        """
+        INSERT INTO pr_review_history (review_item_id, changed_by, field_changed, old_value, new_value)
+        VALUES (%s, %s, 'status', %s, %s)
+        """,
+        (item_id, user["id"], item["status"], f"승인대기(요청:{requested})"),
+    )
+    execute(
+        "UPDATE pr_review_items SET status = '승인대기', requested_status = %s, updated_at = NOW() WHERE id = %s",
+        (requested, item_id),
+    )
+    flash(f"'{requested}'로 종료 요청했습니다. 관리자 승인을 기다려주세요.")
+    return redirect(url_for("reviews.detail", item_id=item_id))
+
+
+@bp.route("/<int:item_id>/approve", methods=["POST"])
+@admin_required
+def approve(item_id):
+    user = current_user()
+    item = query("SELECT * FROM pr_review_items WHERE id = %s", (item_id,), fetch="one")
+    if not item or item["status"] != "승인대기" or not item["requested_status"]:
+        flash("승인 대기 중인 항목이 아닙니다.")
+        return redirect(url_for("reviews.detail", item_id=item_id))
+
+    execute(
+        """
+        INSERT INTO pr_review_history (review_item_id, changed_by, field_changed, old_value, new_value)
+        VALUES (%s, %s, 'status', '승인대기', %s)
+        """,
+        (item_id, user["id"], f"{item['requested_status']}(승인)"),
+    )
+    execute(
+        "UPDATE pr_review_items SET status = %s, requested_status = NULL, updated_at = NOW() WHERE id = %s",
+        (item["requested_status"], item_id),
+    )
+    flash("승인 처리되었습니다.")
+    return redirect(url_for("reviews.detail", item_id=item_id))
+
+
+@bp.route("/<int:item_id>/reject", methods=["POST"])
+@admin_required
+def reject(item_id):
+    user = current_user()
+    item = query("SELECT * FROM pr_review_items WHERE id = %s", (item_id,), fetch="one")
+    if not item or item["status"] != "승인대기":
+        flash("승인 대기 중인 항목이 아닙니다.")
+        return redirect(url_for("reviews.detail", item_id=item_id))
+
+    reason = request.form.get("reason", "").strip()
+
+    execute(
+        """
+        INSERT INTO pr_review_history (review_item_id, changed_by, field_changed, old_value, new_value, comment)
+        VALUES (%s, %s, 'status', '승인대기', '검토중(반려)', %s)
+        """,
+        (item_id, user["id"], reason or None),
+    )
+    execute(
+        "UPDATE pr_review_items SET status = '검토중', requested_status = NULL, updated_at = NOW() WHERE id = %s",
+        (item_id,),
+    )
+    flash("반려 처리되었습니다.")
     return redirect(url_for("reviews.detail", item_id=item_id))
 
 

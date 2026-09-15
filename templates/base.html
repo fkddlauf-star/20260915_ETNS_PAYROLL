@@ -16,6 +16,7 @@
       <a href="{{ url_for('dashboard.admin_home') }}">대시보드</a>
       <a href="{{ url_for('files.index') }}">원본 파일</a>
       <a href="{{ url_for('reviews.index') }}">검토 목록</a>
+      <a href="{{ url_for('rules.index') }}">검증 규칙</a>
       <a href="{{ url_for('users.index') }}">사용자 관리</a>
       {% else %}
       <a href="{{ url_for('dashboard.employee_home') }}">내 검토 현황</a>

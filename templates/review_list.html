@@ -37,6 +37,9 @@
     <select name="sort">
       <option value="created_at" {{ 'selected' if filters.get('sort', 'created_at') == 'created_at' }}>등록일순</option>
       <option value="diff_amount" {{ 'selected' if filters.get('sort') == 'diff_amount' }}>차액순</option>
+      <option value="employee_id" {{ 'selected' if filters.get('sort') == 'employee_id' }}>사번순</option>
+      <option value="review_type" {{ 'selected' if filters.get('sort') == 'review_type' }}>검토유형순</option>
+      <option value="period" {{ 'selected' if filters.get('sort') == 'period' }}>기간순</option>
     </select>
     <button type="submit">검색</button>
   </form>

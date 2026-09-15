@@ -20,7 +20,7 @@
         <td>
           <form action="{{ url_for('users.toggle_active', user_id=u.id) }}" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn-ghost">{{ '비활성화' if u.is_active else '활성화' }}</button>
+            <button type="submit" class="btn-outline">{{ '비활성화' if u.is_active else '활성화' }}</button>
           </form>
         </td>
       </tr>

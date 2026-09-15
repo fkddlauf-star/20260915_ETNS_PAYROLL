@@ -7,7 +7,7 @@ load_dotenv()
 from flask import Flask
 from flask_wtf import CSRFProtect
 
-from . import auth, dashboard, files, reviews, users
+from . import auth, dashboard, files, reviews, rules, users
 from .db import close_db, init_db
 
 csrf = CSRFProtect()
@@ -32,6 +32,7 @@ def create_app():
     app.register_blueprint(reviews.bp)
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(users.bp)
+    app.register_blueprint(rules.bp)
 
     app.teardown_appcontext(close_db)
 

@@ -15,6 +15,7 @@ def _summary():
             (SELECT COUNT(*) FROM pr_review_items) AS review_count,
             (SELECT COUNT(*) FROM pr_review_items WHERE status = '신규') AS new_count,
             (SELECT COUNT(*) FROM pr_review_items WHERE status = '검토중') AS in_progress_count,
+            (SELECT COUNT(*) FROM pr_review_items WHERE status = '승인대기') AS pending_approval_count,
             (SELECT COUNT(*) FROM pr_review_items WHERE status = '해결완료') AS resolved_count,
             (SELECT COUNT(*) FROM pr_review_items WHERE status = '정상예외') AS exception_count,
             (SELECT COUNT(*) FROM pr_review_items WHERE review_type = '누락') AS missing_count,
@@ -85,6 +86,7 @@ def employee_home():
             COUNT(*) AS total,
             COUNT(*) FILTER (WHERE status = '신규') AS new_count,
             COUNT(*) FILTER (WHERE status = '검토중') AS in_progress_count,
+            COUNT(*) FILTER (WHERE status = '승인대기') AS pending_approval_count,
             COUNT(*) FILTER (WHERE status = '해결완료') AS resolved_count,
             COUNT(*) FILTER (WHERE status = '정상예외') AS exception_count
         FROM pr_review_items WHERE assignee_id = %s
