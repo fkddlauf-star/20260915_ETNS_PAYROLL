@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}파일 처리 설정{% endblock %}
+{% block content %}
+<div class="container">
+  <h1>파일 처리 설정 — {{ source_file.file_name }}</h1>
+  <p class="subtitle">시트와 파일 형식(템플릿)을 선택하면 데이터를 읽어들여 정규화 저장합니다.</p>
+
+  <form class="upload-form" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <label>파일 형식(템플릿)
+      <select name="template_key" required>
+        {% for key, tpl in templates.items() %}
+        <option value="{{ key }}">{{ tpl.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    {% if sheet_names %}
+    <label>시트 선택
+      <select name="sheet_name">
+        {% for s in sheet_names %}
+        <option value="{{ s }}">{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endif %}
+
+    <button type="submit" class="btn-primary">데이터 처리 시작</button>
+  </form>
+</div>
+{% endblock %}

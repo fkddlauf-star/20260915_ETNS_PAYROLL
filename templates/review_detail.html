@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}검토 상세 #{{ item.id }}{% endblock %}
+{% block content %}
+<div class="container">
+  <p><a href="{{ url_for('reviews.index') }}">← 목록으로</a></p>
+  <h1>검토 상세 #{{ item.id }}</h1>
+
+  <table class="detail-table">
+    <tr><th>검토 유형</th><td><span class="type-badge type-{{ item.review_type }}">{{ item.review_type }}</span></td></tr>
+    <tr><th>데이터 유형</th><td>{{ item.data_type }}</td></tr>
+    <tr><th>검토 대상 기간</th><td>{{ (item.period_year ~ '년 ' ~ item.period_month ~ '월') if item.period_year else '-' }}</td></tr>
+    <tr><th>사번</th><td>{{ item.employee_id or '-' }}</td></tr>
+    <tr><th>성명</th><td>{{ item.employee_name or '-' }}</td></tr>
+    <tr><th>부서</th><td>{{ item.department or '-' }}</td></tr>
+    <tr><th>원본 파일</th><td>{{ item.source_file_name or '-' }}</td></tr>
+    <tr><th>비교 파일</th><td>{{ item.compare_file_name or '-' }}</td></tr>
+    <tr><th>기준값</th><td>{{ "{:,.0f}".format(item.expected_value|float) if item.expected_value else '-' }}</td></tr>
+    <tr><th>실제값</th><td>{{ "{:,.0f}".format(item.actual_value|float) if item.actual_value else '-' }}</td></tr>
+    <tr><th>차액</th><td>{{ "{:,.0f}".format(item.diff_amount) ~ '원' if item.diff_amount is not none else '-' }}</td></tr>
+    <tr><th>상세 내용</th><td>{{ item.detail or '-' }}</td></tr>
+    <tr><th>등록일시</th><td>{{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+  </table>
+
+  <h2 class="section-title">검토 처리</h2>
+  <form class="review-form" action="{{ url_for('reviews.update', item_id=item.id) }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>검토 상태
+      <select name="status">
+        {% for s in statuses %}
+        <option value="{{ s }}" {{ 'selected' if item.status == s }}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    {% if session.get('role') == 'admin' %}
+    <label>담당 검토자
+      <select name="assignee_id">
+        <option value="">미배정</option>
+        {% for a in assignees %}
+        <option value="{{ a.id }}" {{ 'selected' if item.assignee_id == a.id }}>{{ a.display_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endif %}
+
+    <label>검토 의견
+      <textarea name="comment" rows="4">{{ item.comment or '' }}</textarea>
+    </label>
+    <button type="submit" class="btn-primary">저장</button>
+  </form>
+
+  <h2 class="section-title">변경 이력</h2>
+  <table class="data-table">
+    <thead><tr><th>일시</th><th>변경자</th><th>항목</th><th>이전</th><th>이후</th></tr></thead>
+    <tbody>
+      {% for h in history %}
+      <tr>
+        <td>{{ h.changed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ h.changed_by_name or '-' }}</td>
+        <td>{{ h.field_changed }}</td>
+        <td>{{ h.old_value or '-' }}</td>
+        <td>{{ h.new_value or '-' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="empty">변경 이력이 없습니다.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

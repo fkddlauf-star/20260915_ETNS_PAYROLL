@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}로그인{% endblock %}
+{% block content %}
+<div class="container auth-container">
+  <h1>급여·복리후생 검증 시스템</h1>
+  <p class="subtitle">로그인</p>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <ul class="flash">
+      {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  {% endwith %}
+
+  <form class="auth-form" action="{{ url_for('auth.login') }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="username" placeholder="아이디" autocomplete="username" required>
+    <input type="password" name="password" placeholder="비밀번호" autocomplete="current-password" required>
+    <button type="submit">로그인</button>
+  </form>
+</div>
+{% endblock %}

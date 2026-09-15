@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}검토 목록{% endblock %}
+{% block content %}
+<div class="container wide">
+  <div class="page-header">
+    <h1>검토 대상 목록</h1>
+    <a class="btn-primary" href="{{ url_for('reviews.export', **filters) }}">엑셀 다운로드</a>
+  </div>
+
+  <form class="filter-bar" method="get">
+    <input type="text" name="q" placeholder="사번/성명 검색" value="{{ filters.get('q', '') }}">
+    <select name="data_type">
+      <option value="">전체 데이터유형</option>
+      <option value="급여" {{ 'selected' if filters.get('data_type') == '급여' }}>급여</option>
+      <option value="복리후생" {{ 'selected' if filters.get('data_type') == '복리후생' }}>복리후생</option>
+    </select>
+    <select name="review_type">
+      <option value="">전체 검토유형</option>
+      <option value="누락" {{ 'selected' if filters.get('review_type') == '누락' }}>누락</option>
+      <option value="중복" {{ 'selected' if filters.get('review_type') == '중복' }}>중복</option>
+      <option value="금액불일치" {{ 'selected' if filters.get('review_type') == '금액불일치' }}>금액불일치</option>
+    </select>
+    <select name="status">
+      <option value="">전체 상태</option>
+      {% for s in statuses %}
+      <option value="{{ s }}" {{ 'selected' if filters.get('status') == s }}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    {% if session.get('role') == 'admin' %}
+    <select name="assignee_id">
+      <option value="">전체 담당자</option>
+      {% for a in assignees %}
+      <option value="{{ a.id }}" {{ 'selected' if filters.get('assignee_id') == a.id|string }}>{{ a.display_name }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <select name="sort">
+      <option value="created_at" {{ 'selected' if filters.get('sort', 'created_at') == 'created_at' }}>등록일순</option>
+      <option value="diff_amount" {{ 'selected' if filters.get('sort') == 'diff_amount' }}>차액순</option>
+    </select>
+    <button type="submit">검색</button>
+  </form>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>ID</th><th>유형</th><th>데이터유형</th><th>기간</th><th>사번</th><th>성명</th>
+        <th>원본파일</th><th>차액</th><th>상태</th><th>담당자</th><th>수정일</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.id }}</td>
+        <td><span class="type-badge type-{{ item.review_type }}">{{ item.review_type }}</span></td>
+        <td>{{ item.data_type }}</td>
+        <td>
+          {%- if item.period_year and item.period_month -%}
+            {{ item.period_year }}-{{ '%02d' % item.period_month }}
+          {%- elif item.period_year -%}
+            {{ item.period_year }}
+          {%- else -%}
+            -
+          {%- endif -%}
+        </td>
+        <td>{{ item.employee_id or '-' }}</td>
+        <td>{{ item.employee_name or '-' }}</td>
+        <td>{{ item.source_file_name or '-' }}</td>
+        <td>{{ "{:,.0f}".format(item.diff_amount) if item.diff_amount is not none else '-' }}</td>
+        <td><span class="status-badge status-{{ item.status }}">{{ item.status }}</span></td>
+        <td>{{ item.assignee_name or '미배정' }}</td>
+        <td>{{ item.updated_at.strftime('%Y-%m-%d') if item.updated_at else '-' }}</td>
+        <td><a href="{{ url_for('reviews.detail', item_id=item.id) }}">상세</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="12" class="empty">조건에 맞는 검토 대상이 없습니다.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

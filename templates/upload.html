@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}파일 업로드{% endblock %}
+{% block content %}
+<div class="container">
+  <h1>급여·복리후생 원본 파일 업로드</h1>
+
+  <form class="upload-form" action="{{ url_for('files.upload') }}" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <label>파일 선택 (.xlsx / .csv)
+      <input type="file" name="file" accept=".xlsx,.csv" required>
+    </label>
+
+    <label>데이터 유형
+      <select name="data_type" required>
+        <option value="급여">급여</option>
+        <option value="복리후생">복리후생</option>
+      </select>
+    </label>
+
+    <div class="form-row">
+      <label>연도
+        <input type="number" name="period_year" placeholder="2025">
+      </label>
+      <label>월
+        <input type="number" name="period_month" min="1" max="12" placeholder="12">
+      </label>
+    </div>
+
+    <label>부서 / 분류 (선택)
+      <input type="text" name="department" placeholder="예: 개발본부">
+    </label>
+
+    <label>파일 설명 (선택)
+      <textarea name="description" rows="2"></textarea>
+    </label>
+
+    <button type="submit" class="btn-primary">업로드</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}원본 파일 관리{% endblock %}
+{% block content %}
+<div class="container wide">
+  <div class="page-header">
+    <h1>원본 파일 관리</h1>
+    <a class="btn-primary" href="{{ url_for('files.upload') }}">파일 업로드</a>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>ID</th><th>파일명</th><th>데이터유형</th><th>기간</th><th>부서</th><th>업로드일시</th><th>상태</th><th>행수</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for f in files %}
+      <tr>
+        <td>{{ f.id }}</td>
+        <td>{{ f.file_name }}</td>
+        <td>{{ f.data_type }}</td>
+        <td>
+          {%- if f.period_year and f.period_month -%}
+            {{ f.period_year }}-{{ '%02d' % f.period_month }}
+          {%- elif f.period_year -%}
+            {{ f.period_year }}
+          {%- else -%}
+            -
+          {%- endif -%}
+        </td>
+        <td>{{ f.department or '-' }}</td>
+        <td>{{ f.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td><span class="status-badge status-{{ f.status }}">{{ f.status }}</span></td>
+        <td>{{ f.row_count or '-' }}</td>
+        <td>
+          {% if session.get('role') == 'admin' %}
+          <a href="{{ url_for('files.download', file_id=f.id) }}">다운로드</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="empty">업로드된 파일이 없습니다.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

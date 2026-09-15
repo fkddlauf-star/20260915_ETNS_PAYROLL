@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}급여·복리후생 검증 시스템{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% if session.get('user_id') %}
+  <nav class="topnav">
+    <div class="nav-left">
+      <a class="brand" href="{{ url_for('dashboard.home') }}">급여·복리후생 검증</a>
+      {% if session.get('role') == 'admin' %}
+      <a href="{{ url_for('dashboard.admin_home') }}">대시보드</a>
+      <a href="{{ url_for('files.index') }}">원본 파일</a>
+      <a href="{{ url_for('reviews.index') }}">검토 목록</a>
+      <a href="{{ url_for('users.index') }}">사용자 관리</a>
+      {% else %}
+      <a href="{{ url_for('dashboard.employee_home') }}">내 검토 현황</a>
+      <a href="{{ url_for('reviews.index') }}">배정된 검토 목록</a>
+      {% endif %}
+    </div>
+    <div class="nav-right">
+      <span class="user-chip">{{ session.get('display_name') }}님 ({{ '관리자' if session.get('role') == 'admin' else '조직원' }})</span>
+      <form action="{{ url_for('auth.logout') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-ghost">로그아웃</button>
+      </form>
+    </div>
+  </nav>
+  {% endif %}
+
+  <main class="page">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <ul class="flash">
+        {% for message in messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

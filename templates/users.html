@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}사용자 관리{% endblock %}
+{% block content %}
+<div class="container wide">
+  <h1>사용자 관리</h1>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>아이디</th><th>이름</th><th>권한</th><th>사번</th><th>상태</th><th>가입일</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td>{{ u.display_name }}</td>
+        <td>{{ '관리자' if u.role == 'admin' else '조직원' }}</td>
+        <td>{{ u.employee_id or '-' }}</td>
+        <td><span class="status-badge {{ 'status-해결완료' if u.is_active else 'status-신규' }}">{{ '활성' if u.is_active else '비활성' }}</span></td>
+        <td>{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+        <td>
+          <form action="{{ url_for('users.toggle_active', user_id=u.id) }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-ghost">{{ '비활성화' if u.is_active else '활성화' }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2 class="section-title">새 계정 생성</h2>
+  <form class="upload-form" action="{{ url_for('users.create') }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-row">
+      <label>아이디 <input type="text" name="username" required></label>
+      <label>비밀번호 <input type="password" name="password" required></label>
+    </div>
+    <div class="form-row">
+      <label>이름 <input type="text" name="display_name" required></label>
+      <label>권한
+        <select name="role">
+          <option value="employee">조직원</option>
+          <option value="admin">관리자</option>
+        </select>
+      </label>
+    </div>
+    <label>사번 (선택, 조직원인 경우 HR 사번과 매칭)
+      <input type="text" name="employee_id" placeholder="EMP0003">
+    </label>
+    <button type="submit" class="btn-primary">계정 생성</button>
+  </form>
+</div>
+{% endblock %}

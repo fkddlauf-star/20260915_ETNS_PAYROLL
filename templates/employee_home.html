@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}내 검토 현황{% endblock %}
+{% block content %}
+<div class="container wide">
+  <h1>내 검토 현황</h1>
+
+  <div class="tiles">
+    <div class="tile"><span class="tile-label">배정된 전체</span><span class="tile-value">{{ summary.total }}</span></div>
+    <div class="tile new"><span class="tile-label">신규</span><span class="tile-value">{{ summary.new_count }}</span></div>
+    <div class="tile progress"><span class="tile-label">검토중</span><span class="tile-value">{{ summary.in_progress_count }}</span></div>
+    <div class="tile done"><span class="tile-label">해결완료</span><span class="tile-value">{{ summary.resolved_count }}</span></div>
+    <div class="tile exception"><span class="tile-label">정상예외</span><span class="tile-value">{{ summary.exception_count }}</span></div>
+  </div>
+
+  <h2 class="section-title">최근 배정 항목</h2>
+  <table class="data-table">
+    <thead>
+      <tr><th>유형</th><th>데이터유형</th><th>사번</th><th>성명</th><th>차액</th><th>상태</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for item in recent %}
+      <tr>
+        <td>{{ item.review_type }}</td>
+        <td>{{ item.data_type }}</td>
+        <td>{{ item.employee_id }}</td>
+        <td>{{ item.employee_name or '-' }}</td>
+        <td>{{ "{:,.0f}".format(item.diff_amount) if item.diff_amount is not none else '-' }}</td>
+        <td><span class="status-badge status-{{ item.status }}">{{ item.status }}</span></td>
+        <td><a href="{{ url_for('reviews.detail', item_id=item.id) }}">보기</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty">배정된 검토 항목이 없습니다.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p><a href="{{ url_for('reviews.index') }}">전체 배정 목록 보기 →</a></p>
+</div>
+{% endblock %}

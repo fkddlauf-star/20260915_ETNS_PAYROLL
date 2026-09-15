@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}관리자 대시보드{% endblock %}
+{% block content %}
+<div class="container wide">
+  <div class="page-header">
+    <h1>관리자 대시보드</h1>
+    <form action="{{ url_for('files.run_validation') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-primary">지금 재검증 실행</button>
+    </form>
+  </div>
+
+  <div class="tiles" id="summary-tiles">
+    <div class="tile"><span class="tile-label">업로드 파일</span><span class="tile-value" data-key="file_count">{{ summary.file_count }}</span></div>
+    <div class="tile"><span class="tile-label">처리 데이터 건수</span><span class="tile-value" data-key="record_count">{{ summary.record_count }}</span></div>
+    <div class="tile"><span class="tile-label">전체 검토 대상</span><span class="tile-value" data-key="review_count">{{ summary.review_count }}</span></div>
+    <div class="tile new"><span class="tile-label">신규</span><span class="tile-value" data-key="new_count">{{ summary.new_count }}</span></div>
+    <div class="tile progress"><span class="tile-label">검토중</span><span class="tile-value" data-key="in_progress_count">{{ summary.in_progress_count }}</span></div>
+    <div class="tile done"><span class="tile-label">해결완료</span><span class="tile-value" data-key="resolved_count">{{ summary.resolved_count }}</span></div>
+    <div class="tile exception"><span class="tile-label">정상예외</span><span class="tile-value" data-key="exception_count">{{ summary.exception_count }}</span></div>
+    <div class="tile"><span class="tile-label">누락</span><span class="tile-value" data-key="missing_count">{{ summary.missing_count }}</span></div>
+    <div class="tile"><span class="tile-label">중복</span><span class="tile-value" data-key="duplicate_count">{{ summary.duplicate_count }}</span></div>
+    <div class="tile"><span class="tile-label">금액불일치</span><span class="tile-value" data-key="mismatch_count">{{ summary.mismatch_count }}</span></div>
+    <div class="tile"><span class="tile-label">불일치 총액</span><span class="tile-value" data-key="mismatch_total">{{ "{:,.0f}".format(summary.mismatch_total) }}원</span></div>
+    <div class="tile rate"><span class="tile-label">검토 완료율</span><span class="tile-value" data-key="completion_rate">{{ summary.completion_rate }}%</span></div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card"><h3>검토 유형별 발생 건수</h3><canvas id="chartByType"></canvas></div>
+    <div class="chart-card"><h3>검토 상태별 분포</h3><canvas id="chartByStatus"></canvas></div>
+    <div class="chart-card"><h3>부서별 검토 대상 건수</h3><canvas id="chartByDept"></canvas></div>
+    <div class="chart-card"><h3>월별 검토 대상 발생 추이</h3><canvas id="chartTrend"></canvas></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<script>
+  const chartData = {{ charts | tojson }};
+</script>
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+{% endblock %}
