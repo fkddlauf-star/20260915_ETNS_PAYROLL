@@ -7,8 +7,6 @@
 import json
 import time
 
-import pandas as pd
-
 from .db import execute, get_db, query
 from .validation import (
     detect_duplicates,
@@ -90,6 +88,8 @@ def _detect_id_column(columns):
 
 
 def ingest_records(file_id, sheet_name, df, template_key):
+    import pandas as pd  # 파일 업로드 처리 경로에서만 필요 (콜드스타트 시간 절약을 위해 지연 임포트)
+
     start = time.time()
     template = TEMPLATES.get(template_key) or TEMPLATES["auto"]
     id_col = template["id_col"] or _detect_id_column(df.columns)

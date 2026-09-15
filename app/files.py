@@ -4,7 +4,6 @@ import time
 import uuid
 from urllib.parse import quote
 
-import pandas as pd
 from flask import (
     Blueprint,
     Response,
@@ -109,6 +108,8 @@ def upload():
 @bp.route("/<int:file_id>/configure", methods=["GET", "POST"])
 @login_required
 def configure(file_id):
+    import pandas as pd  # 파일 업로드 처리 경로에서만 필요 (콜드스타트 시간 절약을 위해 지연 임포트)
+
     source_file = query("SELECT * FROM pr_source_files WHERE id = %s", (file_id,), fetch="one")
     if not source_file:
         flash("파일을 찾을 수 없습니다.")

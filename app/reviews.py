@@ -1,6 +1,5 @@
 import io
 
-import pandas as pd
 from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 
 from .auth import current_user, login_required
@@ -167,6 +166,8 @@ def update(item_id):
 @bp.route("/export")
 @login_required
 def export():
+    import pandas as pd  # 엑셀 내보내기 경로에서만 필요 (콜드스타트 시간 절약을 위해 지연 임포트)
+
     user = current_user()
     where, params = _build_filters(request.args, user)
     items = query(
