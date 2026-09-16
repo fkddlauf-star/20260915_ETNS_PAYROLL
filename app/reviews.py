@@ -22,34 +22,38 @@ SORT_OPTIONS = {
 
 
 def _build_filters(args, user):
+    # Every column here is qualified with ri. because pr_review_items is joined
+    # against pr_users and pr_source_files, which both also have status/employee_id/
+    # data_type/period_year/period_month columns — an unqualified name is ambiguous
+    # to Postgres and raises a 500 as soon as any filter is applied.
     where = ["1=1"]
     params = []
 
     if user["role"] != "admin":
-        where.append("assignee_id = %s")
+        where.append("ri.assignee_id = %s")
         params.append(user["id"])
 
     if args.get("q"):
-        where.append("(employee_id ILIKE %s OR employee_name ILIKE %s)")
+        where.append("(ri.employee_id ILIKE %s OR ri.employee_name ILIKE %s)")
         like = f"%{args['q']}%"
         params.extend([like, like])
     if args.get("data_type"):
-        where.append("data_type = %s")
+        where.append("ri.data_type = %s")
         params.append(args["data_type"])
     if args.get("review_type"):
-        where.append("review_type = %s")
+        where.append("ri.review_type = %s")
         params.append(args["review_type"])
     if args.get("status"):
-        where.append("status = %s")
+        where.append("ri.status = %s")
         params.append(args["status"])
     if args.get("assignee_id") and user["role"] == "admin":
-        where.append("assignee_id = %s")
+        where.append("ri.assignee_id = %s")
         params.append(args["assignee_id"])
     if args.get("period_year"):
-        where.append("period_year = %s")
+        where.append("ri.period_year = %s")
         params.append(args["period_year"])
     if args.get("period_month"):
-        where.append("period_month = %s")
+        where.append("ri.period_month = %s")
         params.append(args["period_month"])
 
     return " AND ".join(where), params
@@ -276,14 +280,14 @@ def export():
     where, params = _build_filters(request.args, user)
     items = query(
         f"""
-        SELECT id AS 검토ID, review_type AS 검토유형, data_type AS 데이터유형,
-               period_year AS 연도, period_month AS 월, employee_id AS 사번,
-               employee_name AS 성명, department AS 부서, expected_value AS 기준값,
-               actual_value AS 실제값, diff_amount AS 차액, status AS 검토상태,
-               comment AS 검토의견, created_at AS 등록일시, updated_at AS 수정일시
-        FROM pr_review_items
+        SELECT ri.id AS 검토ID, ri.review_type AS 검토유형, ri.data_type AS 데이터유형,
+               ri.period_year AS 연도, ri.period_month AS 월, ri.employee_id AS 사번,
+               ri.employee_name AS 성명, ri.department AS 부서, ri.expected_value AS 기준값,
+               ri.actual_value AS 실제값, ri.diff_amount AS 차액, ri.status AS 검토상태,
+               ri.comment AS 검토의견, ri.created_at AS 등록일시, ri.updated_at AS 수정일시
+        FROM pr_review_items ri
         WHERE {where}
-        ORDER BY created_at DESC
+        ORDER BY ri.created_at DESC
         """,
         tuple(params),
     )
