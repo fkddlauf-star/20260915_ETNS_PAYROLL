@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}{{ '규칙 수정' if rule else '새 규칙 등록' }}{% endblock %}
+{% block content %}
+<div class="container">
+  <p><a href="{{ url_for('rules.index') }}">← 검증 규칙 목록으로</a></p>
+  <h1>{{ '규칙 수정' if rule else '새 검증 규칙 등록' }}</h1>
+  <p class="subtitle">등록/수정한 규칙은 "지금 재검증 실행"을 누르는 다음 검증부터 바로 적용됩니다.</p>
+
+  <form class="upload-form" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-row">
+      <label>검증 유형
+        <select name="rule_type" required>
+          {% for t in rule_types %}
+          <option value="{{ t }}" {{ 'selected' if rule and rule.rule_type == t }}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>데이터 유형
+        <select name="data_type" required>
+          {% for t in data_types %}
+          <option value="{{ t }}" {{ 'selected' if rule and rule.data_type == t }}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <label>규칙 이름
+      <input type="text" name="label" value="{{ rule.label if rule else '' }}" placeholder="예: HR마스터 vs 급여상세" required>
+    </label>
+
+    <div class="form-row">
+      <label>기준 파일 (필수)
+        <select name="base_template_key" required>
+          <option value="">-- 선택 --</option>
+          {% for key, tpl in templates.items() %}
+          <option value="{{ key }}" {{ 'selected' if rule and rule.base_template_key == key }}>{{ tpl.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>비교 파일 (누락·금액불일치 교차비교 시)
+        <select name="compare_template_key">
+          <option value="">(자기 파일 내부 비교 / 해당없음)</option>
+          {% for key, tpl in templates.items() %}
+          <option value="{{ key }}" {{ 'selected' if rule and rule.compare_template_key == key }}>{{ tpl.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <label>매칭 키 컬럼 (중복 검증용, 콤마로 구분)
+      <input type="text" name="key_columns" value="{{ rule.key_columns if rule else '' }}" placeholder="예: employee_id,period_year,period_month">
+    </label>
+
+    <div class="form-row">
+      <label>허용 오차 (금액불일치용, 원)
+        <input type="number" name="amount_tolerance" value="{{ rule.amount_tolerance|int if rule else 0 }}" step="1000">
+      </label>
+      <label>대상 연도
+        <input type="number" name="target_period_year" value="{{ rule.target_period_year or '' if rule else '' }}" placeholder="비워두면 전체">
+      </label>
+      <label>대상 월
+        <input type="number" name="target_period_month" min="1" max="12" value="{{ rule.target_period_month or '' if rule else '' }}" placeholder="비워두면 전체">
+      </label>
+    </div>
+
+    <div class="form-row">
+      <label>기준값 필드명 (금액불일치용)
+        <input type="text" name="amount_field_base" value="{{ rule.amount_field_base or '' if rule else '' }}" placeholder="예: benefit_amount">
+      </label>
+      <label>비교값 필드명 (금액불일치용)
+        <input type="text" name="amount_field_compare" value="{{ rule.amount_field_compare or '' if rule else '' }}" placeholder="예: benefit_limit">
+      </label>
+    </div>
+
+    <label class="checkbox-label">
+      <input type="checkbox" name="is_active" {{ 'checked' if (rule is none) or rule.is_active }}>
+      즉시 활성화
+    </label>
+
+    <button type="submit" class="btn-primary">{{ '저장' if rule else '등록' }}</button>
+  </form>
+
+  <h2 class="section-title">파일별 사용 가능한 필드명</h2>
+  <table class="data-table">
+    <thead><tr><th>파일</th><th>필드명(금액불일치 입력용)</th></tr></thead>
+    <tbody>
+      {% for key, tpl in templates.items() %}
+      {% if tpl.amount_cols %}
+      <tr>
+        <td>{{ tpl.label }}</td>
+        <td>{{ tpl.amount_cols.keys()|join(', ') }}</td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -282,6 +282,19 @@ h1 { margin-top: 0; font-size: 22px; }
 .status-해결완료 { background: #e3f5ea; color: #1a7f4b; }
 .status-정상예외 { background: #ece8e3; color: var(--text-muted); }
 .status-승인대기 { background: #e3edfb; color: #2f5e8f; }
+.status-확인요청 { background: #e6f6fa; color: #1c6b8a; }
+.status-수정필요 { background: #fdece0; color: #b05a1e; }
+
+.ai-opinion-box {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+.ai-opinion-box p { margin: 0 0 6px; }
+.ai-opinion-box ul { margin: 0 0 10px; padding-left: 20px; }
+.ai-opinion-box li { margin-bottom: 3px; }
 
 .approval-box {
   background: var(--surface-soft);

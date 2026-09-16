@@ -2,13 +2,15 @@ import io
 
 from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 
+from . import ai_review
 from .auth import admin_required, current_user, login_required
 from .db import execute, query
 
 bp = Blueprint("reviews", __name__, url_prefix="/reviews")
 
-STATUS_CHOICES = ["신규", "검토중", "승인대기", "해결완료", "정상예외"]
+STATUS_CHOICES = ["신규", "검토중", "확인요청", "수정필요", "승인대기", "해결완료", "정상예외"]
 CLOSING_STATUSES = ("해결완료", "정상예외")
+EMPLOYEE_SETTABLE_STATUSES = ("신규", "검토중", "확인요청", "수정필요")
 
 SORT_OPTIONS = {
     "created_at": ("created_at", "DESC"),
@@ -114,8 +116,14 @@ def detail(item_id):
         (item_id,),
     )
     assignees = query("SELECT id, display_name FROM pr_users WHERE role = 'employee' ORDER BY display_name")
+    ai_opinion = ai_review.generate_opinion(item)
     return render_template(
-        "review_detail.html", item=item, history=history, statuses=STATUS_CHOICES, assignees=assignees
+        "review_detail.html",
+        item=item,
+        history=history,
+        statuses=STATUS_CHOICES,
+        assignees=assignees,
+        ai_opinion=ai_opinion,
     )
 
 
