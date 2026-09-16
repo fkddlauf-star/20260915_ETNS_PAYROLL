@@ -6,11 +6,13 @@
 
   <div class="tiles">
     <div class="tile"><span class="tile-label">배정된 전체</span><span class="tile-value">{{ summary.total }}</span></div>
-    <div class="tile new"><span class="tile-label">신규</span><span class="tile-value">{{ summary.new_count }}</span></div>
-    <div class="tile progress"><span class="tile-label">검토중</span><span class="tile-value">{{ summary.in_progress_count }}</span></div>
-    <div class="tile pending"><span class="tile-label">승인대기</span><span class="tile-value">{{ summary.pending_approval_count }}</span></div>
-    <div class="tile done"><span class="tile-label">해결완료</span><span class="tile-value">{{ summary.resolved_count }}</span></div>
-    <div class="tile exception"><span class="tile-label">정상예외</span><span class="tile-value">{{ summary.exception_count }}</span></div>
+    <a class="tile new" href="{{ url_for('reviews.index', status='신규') }}"><span class="tile-label">신규</span><span class="tile-value">{{ summary.new_count }}</span></a>
+    <a class="tile progress" href="{{ url_for('reviews.index', status='검토중') }}"><span class="tile-label">검토중</span><span class="tile-value">{{ summary.in_progress_count }}</span></a>
+    <a class="tile check" href="{{ url_for('reviews.index', status='확인요청') }}"><span class="tile-label">확인요청</span><span class="tile-value">{{ summary.pending_check_count }}</span></a>
+    <a class="tile fix" href="{{ url_for('reviews.index', status='수정필요') }}"><span class="tile-label">수정필요</span><span class="tile-value">{{ summary.needs_fix_count }}</span></a>
+    <a class="tile pending" href="{{ url_for('reviews.index', status='승인대기') }}"><span class="tile-label">승인대기</span><span class="tile-value">{{ summary.pending_approval_count }}</span></a>
+    <a class="tile done" href="{{ url_for('reviews.index', status='해결완료') }}"><span class="tile-label">해결완료</span><span class="tile-value">{{ summary.resolved_count }}</span></a>
+    <a class="tile exception" href="{{ url_for('reviews.index', status='정상예외') }}"><span class="tile-label">정상예외</span><span class="tile-value">{{ summary.exception_count }}</span></a>
   </div>
 
   <h2 class="section-title">최근 배정 항목</h2>

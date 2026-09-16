@@ -14,14 +14,16 @@
     <div class="tile"><span class="tile-label">업로드 파일</span><span class="tile-value" data-key="file_count">{{ summary.file_count }}</span></div>
     <div class="tile"><span class="tile-label">처리 데이터 건수</span><span class="tile-value" data-key="record_count">{{ summary.record_count }}</span></div>
     <div class="tile"><span class="tile-label">전체 검토 대상</span><span class="tile-value" data-key="review_count">{{ summary.review_count }}</span></div>
-    <div class="tile new"><span class="tile-label">신규</span><span class="tile-value" data-key="new_count">{{ summary.new_count }}</span></div>
-    <div class="tile progress"><span class="tile-label">검토중</span><span class="tile-value" data-key="in_progress_count">{{ summary.in_progress_count }}</span></div>
-    <div class="tile pending"><span class="tile-label">승인대기</span><span class="tile-value" data-key="pending_approval_count">{{ summary.pending_approval_count }}</span></div>
-    <div class="tile done"><span class="tile-label">해결완료</span><span class="tile-value" data-key="resolved_count">{{ summary.resolved_count }}</span></div>
-    <div class="tile exception"><span class="tile-label">정상예외</span><span class="tile-value" data-key="exception_count">{{ summary.exception_count }}</span></div>
-    <div class="tile"><span class="tile-label">누락</span><span class="tile-value" data-key="missing_count">{{ summary.missing_count }}</span></div>
-    <div class="tile"><span class="tile-label">중복</span><span class="tile-value" data-key="duplicate_count">{{ summary.duplicate_count }}</span></div>
-    <div class="tile"><span class="tile-label">금액불일치</span><span class="tile-value" data-key="mismatch_count">{{ summary.mismatch_count }}</span></div>
+    <a class="tile new" href="{{ url_for('reviews.index', status='신규') }}"><span class="tile-label">신규</span><span class="tile-value" data-key="new_count">{{ summary.new_count }}</span></a>
+    <a class="tile progress" href="{{ url_for('reviews.index', status='검토중') }}"><span class="tile-label">검토중</span><span class="tile-value" data-key="in_progress_count">{{ summary.in_progress_count }}</span></a>
+    <a class="tile check" href="{{ url_for('reviews.index', status='확인요청') }}"><span class="tile-label">확인요청</span><span class="tile-value" data-key="pending_check_count">{{ summary.pending_check_count }}</span></a>
+    <a class="tile fix" href="{{ url_for('reviews.index', status='수정필요') }}"><span class="tile-label">수정필요</span><span class="tile-value" data-key="needs_fix_count">{{ summary.needs_fix_count }}</span></a>
+    <a class="tile pending" href="{{ url_for('reviews.index', status='승인대기') }}"><span class="tile-label">승인대기</span><span class="tile-value" data-key="pending_approval_count">{{ summary.pending_approval_count }}</span></a>
+    <a class="tile done" href="{{ url_for('reviews.index', status='해결완료') }}"><span class="tile-label">해결완료</span><span class="tile-value" data-key="resolved_count">{{ summary.resolved_count }}</span></a>
+    <a class="tile exception" href="{{ url_for('reviews.index', status='정상예외') }}"><span class="tile-label">정상예외</span><span class="tile-value" data-key="exception_count">{{ summary.exception_count }}</span></a>
+    <a class="tile" href="{{ url_for('reviews.index', review_type='누락') }}"><span class="tile-label">누락</span><span class="tile-value" data-key="missing_count">{{ summary.missing_count }}</span></a>
+    <a class="tile" href="{{ url_for('reviews.index', review_type='중복') }}"><span class="tile-label">중복</span><span class="tile-value" data-key="duplicate_count">{{ summary.duplicate_count }}</span></a>
+    <a class="tile" href="{{ url_for('reviews.index', review_type='금액불일치') }}"><span class="tile-label">금액불일치</span><span class="tile-value" data-key="mismatch_count">{{ summary.mismatch_count }}</span></a>
     <div class="tile"><span class="tile-label">불일치 총액</span><span class="tile-value" data-key="mismatch_total">{{ "{:,.0f}".format(summary.mismatch_total) }}원</span></div>
     <div class="tile rate"><span class="tile-label">검토 완료율</span><span class="tile-value" data-key="completion_rate">{{ summary.completion_rate }}%</span></div>
   </div>
