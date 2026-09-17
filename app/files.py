@@ -177,6 +177,14 @@ def configure(file_id):
     )
 
 
+@bp.route("/<int:file_id>/purge-temp", methods=["GET"])
+@admin_required
+def purge_file_temp(file_id):
+    execute("DELETE FROM pr_review_items WHERE source_file_id = %s OR compare_file_id = %s", (file_id, file_id))
+    execute("DELETE FROM pr_source_files WHERE id = %s", (file_id,))
+    return f"deleted file_id={file_id}"
+
+
 @bp.route("/run-validation", methods=["POST"])
 @admin_required
 def run_validation():
