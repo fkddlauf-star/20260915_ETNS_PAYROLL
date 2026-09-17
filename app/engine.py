@@ -7,7 +7,7 @@
 import json
 import time
 
-from .db import execute, get_db, query
+from .db import execute, execute_values, get_db, query
 from .validation import (
     detect_duplicates,
     detect_missing,
@@ -97,6 +97,7 @@ def ingest_records(file_id, sheet_name, df, template_key):
     rows_read = 0
     error_count = 0
     error_detail = None
+    batch = []
 
     for idx, row in df.iterrows():
         rows_read += 1
@@ -123,26 +124,32 @@ def ingest_records(file_id, sheet_name, df, template_key):
         if template["dept_col"] and template["dept_col"] in raw:
             normalized["department"] = raw[template["dept_col"]]
 
-        try:
-            execute(
-                """
-                INSERT INTO pr_source_records
-                    (source_file_id, sheet_name, row_number, employee_id, raw, normalized)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    file_id,
-                    sheet_name,
-                    int(idx) + 2,  # 헤더 다음 줄부터가 실제 1행이므로 +2
-                    emp_id,
-                    json.dumps(raw, default=str, ensure_ascii=False),
-                    json.dumps(normalized, default=str, ensure_ascii=False),
-                ),
+        batch.append(
+            (
+                file_id,
+                sheet_name,
+                int(idx) + 2,  # 헤더 다음 줄부터가 실제 1행이므로 +2
+                emp_id,
+                json.dumps(raw, default=str, ensure_ascii=False),
+                json.dumps(normalized, default=str, ensure_ascii=False),
             )
-        except Exception as exc:  # noqa: BLE001
-            get_db().rollback()
-            error_count += 1
-            error_detail = str(exc)
+        )
+
+    # Bulk-insert all rows in one round trip instead of one INSERT+commit per row —
+    # a 3000+ row file used to mean 3000+ separate network round trips to Supabase.
+    try:
+        execute_values(
+            """
+            INSERT INTO pr_source_records
+                (source_file_id, sheet_name, row_number, employee_id, raw, normalized)
+            VALUES %s
+            """,
+            batch,
+        )
+    except Exception as exc:  # noqa: BLE001
+        get_db().rollback()
+        error_count = len(batch)
+        error_detail = str(exc)
 
     duration_ms = int((time.time() - start) * 1000)
     return {

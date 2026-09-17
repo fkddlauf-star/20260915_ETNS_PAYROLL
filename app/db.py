@@ -39,6 +39,18 @@ def execute(sql, params=(), returning=False):
     return result
 
 
+def execute_values(sql, rows, page_size=1000):
+    """Bulk insert: sql is 'INSERT INTO t (a, b) VALUES %s [ON CONFLICT ...]', rows is a list
+    of value tuples. One round trip (per page) instead of one per row — use this for any
+    row-by-row loop that would otherwise call execute() once per record."""
+    if not rows:
+        return
+    db = get_db()
+    with db.cursor() as cur:
+        psycopg2.extras.execute_values(cur, sql, rows, page_size=page_size)
+    db.commit()
+
+
 def init_db():
     conn = psycopg2.connect(DATABASE_URL)
     try:
