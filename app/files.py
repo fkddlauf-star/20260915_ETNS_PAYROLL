@@ -177,31 +177,6 @@ def configure(file_id):
     )
 
 
-@bp.route("/cleanup-temp", methods=["GET"])
-@admin_required
-def cleanup_temp():
-    bad_ids = [22, 23, 24, 25]
-    execute(
-        "DELETE FROM pr_review_items WHERE source_file_id = ANY(%s) OR compare_file_id = ANY(%s)",
-        (bad_ids, bad_ids),
-    )
-    execute("DELETE FROM pr_processing_jobs WHERE source_file_id = ANY(%s)", (bad_ids,))
-    execute("DELETE FROM pr_source_files WHERE id = ANY(%s)", (bad_ids,))
-
-    tampered = query("SELECT id FROM pr_review_items WHERE status != '신규'")
-    ids = [r["id"] for r in tampered]
-    if ids:
-        execute("DELETE FROM pr_review_history WHERE review_item_id = ANY(%s)", (ids,))
-        execute(
-            "UPDATE pr_review_items SET status = '신규', comment = NULL, requested_status = NULL, updated_at = NOW() WHERE id = ANY(%s)",
-            (ids,),
-        )
-
-    files_left = query("SELECT COUNT(*) AS c FROM pr_source_files", fetch="one")["c"]
-    items_left = query("SELECT COUNT(*) AS c FROM pr_review_items", fetch="one")["c"]
-    return f"cleanup done. files_left={files_left} items_left={items_left} reset_items={len(ids)}"
-
-
 @bp.route("/run-validation", methods=["POST"])
 @admin_required
 def run_validation():
