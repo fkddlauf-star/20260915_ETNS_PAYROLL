@@ -15,7 +15,7 @@ from flask import (
 )
 
 from .auth import admin_required, current_user, login_required
-from .db import execute, query
+from .db import execute, get_db, query
 from .engine import TEMPLATES, ingest_records, run_all_validations
 from .storage import download_file, upload_file
 
@@ -180,9 +180,14 @@ def configure(file_id):
 @bp.route("/<int:file_id>/purge-temp", methods=["GET"])
 @admin_required
 def purge_file_temp(file_id):
-    execute("DELETE FROM pr_review_items WHERE source_file_id = %s OR compare_file_id = %s", (file_id, file_id))
-    execute("DELETE FROM pr_source_files WHERE id = %s", (file_id,))
-    return f"deleted file_id={file_id}"
+    import traceback
+    try:
+        execute("DELETE FROM pr_review_items WHERE source_file_id = %s OR compare_file_id = %s", (file_id, file_id))
+        execute("DELETE FROM pr_source_files WHERE id = %s", (file_id,))
+        return f"deleted file_id={file_id}"
+    except Exception as exc:  # noqa: BLE001
+        get_db().rollback()
+        return f"ERROR: {exc}\n\n{traceback.format_exc()}", 200
 
 
 @bp.route("/run-validation", methods=["POST"])
