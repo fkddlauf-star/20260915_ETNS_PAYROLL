@@ -183,6 +183,7 @@ def purge_file_temp(file_id):
     import traceback
     try:
         execute("DELETE FROM pr_review_items WHERE source_file_id = %s OR compare_file_id = %s", (file_id, file_id))
+        execute("DELETE FROM pr_processing_jobs WHERE source_file_id = %s", (file_id,))
         execute("DELETE FROM pr_source_files WHERE id = %s", (file_id,))
         return f"deleted file_id={file_id}"
     except Exception as exc:  # noqa: BLE001
